@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # MongoDB - single instance, multiple databases
+  mongodb:
+    image: mongo:7
+    container_name: streamverse-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: streamverse
+      MONGO_INITDB_ROOT_PASSWORD: streamverse123
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # RabbitMQ with management UI
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: streamverse-rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: streamverse
+      RABBITMQ_DEFAULT_PASS: streamverse123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  rabbitmq_data:

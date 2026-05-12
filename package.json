@@ -1,0 +1,31 @@
+{
+  "name": "streamverse",
+  "version": "1.0.0",
+  "description": "StreamVerse — Microservices-Based Video Streaming Platform",
+  "private": true,
+  "scripts": {
+    "install:all": "pnpm install:gateway && pnpm install:auth && pnpm install:video && pnpm install:transcode && pnpm install:stream && pnpm install:channel && pnpm install:interaction && pnpm install:search && pnpm install:notification",
+    "install:gateway": "cd services/api-gateway && pnpm install",
+    "install:auth": "cd services/auth-service && pnpm install",
+    "install:video": "cd services/video-service && pnpm install",
+    "install:transcode": "cd services/transcode-service && pnpm install",
+    "install:stream": "cd services/stream-service && pnpm install",
+    "install:channel": "cd services/channel-service && pnpm install",
+    "install:interaction": "cd services/interaction-service && pnpm install",
+    "install:search": "cd services/search-service && pnpm install",
+    "install:notification": "cd services/notification-service && pnpm install",
+    "install:client": "cd client && pnpm install",
+    "dev:gateway": "cd services/api-gateway && pnpm dev",
+    "dev:auth": "cd services/auth-service && pnpm dev",
+    "dev:video": "cd services/video-service && pnpm dev",
+    "dev:transcode": "cd services/transcode-service && pnpm dev",
+    "dev:stream": "cd services/stream-service && pnpm dev",
+    "dev:channel": "cd services/channel-service && pnpm dev",
+    "dev:interaction": "cd services/interaction-service && pnpm dev",
+    "dev:search": "cd services/search-service && pnpm dev",
+    "dev:notification": "cd services/notification-service && pnpm dev",
+    "dev:client": "cd client && pnpm dev"
+  },
+  "author": "StreamVerse Team",
+  "license": "ISC"
+}
