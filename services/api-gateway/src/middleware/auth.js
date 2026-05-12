@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');//this file just has functions to be called where we need to check if user has necessary auth, like checking before letting video upload etc
 
 // Optional auth - sets req.userId if token valid, doesn't block if missing
 const optionalAuth = (req, res, next) => {

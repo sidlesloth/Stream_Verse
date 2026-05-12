@@ -1,15 +1,16 @@
-require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '..', '.env') });
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const { optionalAuth, requireAuth } = require('./middleware/auth');
+//require function to import modules
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '..', '.env') });// for centralized env instead of individual env in each service
+const express = require('express');//main web framework
+const cors = require('cors');//for cross origin resource sharing
+const morgan = require('morgan');//for logging requests
+const rateLimit = require('express-rate-limit');//for limiting requests and avoiding DoS attacks
+const { createProxyMiddleware } = require('http-proxy-middleware');//for proxying requests to services
+const { optionalAuth, requireAuth } = require('./middleware/auth');//for authentication and authorization
 
 const app = express();
 const PORT = process.env.API_GATEWAY_PORT || 3000;
 
-// Service URLs
+// Service URLs for ease in use later
 const SERVICES = {
   auth: `http://localhost:${process.env.AUTH_SERVICE_PORT || 3001}`,
   video: `http://localhost:${process.env.VIDEO_SERVICE_PORT || 3002}`,
@@ -81,7 +82,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, () => {//starts http server
   console.log(`API Gateway running on port ${PORT}`);
   console.log('Proxying to services:', SERVICES);
 });
