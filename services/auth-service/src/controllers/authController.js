@@ -13,7 +13,7 @@ const generateTokens = (userId) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
@@ -26,7 +26,8 @@ exports.register = async (req, res) => {
       return res.status(409).json({ error: 'Email already in use' });
     }
 
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password, role: role || 'user' });
+
     const tokens = generateTokens(user._id);
     res.status(201).json({ user, ...tokens });
   } catch (error) {

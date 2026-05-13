@@ -4,13 +4,18 @@ const jwt = require('jsonwebtoken');//this file just has functions to be called 
 const optionalAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('Optional Auth: No token provided');
     return next();
   }
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
+    // Set the header directly here so it's ready for proxying
+    req.headers['x-user-id'] = decoded.userId.toString();
+    console.log('Optional Auth: Valid token, set x-user-id header for', req.userId);
   } catch (e) {
+    console.log('Optional Auth: Invalid token -', e.message);
     // Token invalid — continue without auth
   }
   next();

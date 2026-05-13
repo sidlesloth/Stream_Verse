@@ -1,7 +1,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const QUALITY_PRESETS = require('../config/qualityPresets');
+const QUALITY_PRESETS = require('./config/qualityPresets');
 
 const FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
 
@@ -16,13 +16,12 @@ function transcodeVariant(inputPath, outputDir, preset) {
 
     const args = [
       '-i', inputPath,
-      '-vf', `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=decrease,pad=${preset.width}:${preset.height}:(ow-iw)/2:(oh-ih)/2`,
+      '-vf', `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,pad=${preset.width}:${preset.height}:(ow-iw)/2:(oh-ih)/2`,
       '-c:v', 'libx264',
       '-b:v', preset.videoBitrate,
       '-maxrate', preset.videoBitrate,
       '-bufsize', `${parseInt(preset.videoBitrate) * 2}k`,
       '-c:a', 'aac',
-      '-b:a', preset.audioBitrate,
       '-ar', '44100',
       '-hls_time', '6',
       '-hls_playlist_type', 'vod',
@@ -64,7 +63,7 @@ function generateMasterPlaylist(outputDir, qualities) {
   for (const q of qualities) {
     const bandwidth = parseInt(q.videoBitrate) * 1000 + parseInt(q.audioBitrate) * 1000;
     const resolution = q.resolution === '360p' ? '640x360' :
-                       q.resolution === '720p' ? '1280x720' : '1920x1080';
+      q.resolution === '720p' ? '1280x720' : '1920x1080';
     manifest += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${resolution},NAME="${q.resolution} ${q.quality}"\n`;
     manifest += `${q.path}\n`;
   }
@@ -160,6 +159,9 @@ async function transcodeVideo(videoId, inputPath, outputDir) {
 
   // Generate master playlist
   generateMasterPlaylist(outputDir, qualities);
+
+  console.log(`\n✅ SUCCESSFULLY COMPLETED ALL TRANSCODING FOR VIDEO ${videoId}`);
+  console.log(`   You can now watch the video at: http://localhost:3000/api/v1/stream/${videoId}/master.m3u8\n`);
 
   return { qualities, duration, thumbnailPath };
 }

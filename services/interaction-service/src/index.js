@@ -35,7 +35,7 @@ commentSchema.index({ video: 1, createdAt: -1 });
 const Comment = mongoose.model('Comment', commentSchema);
 
 // --- Like / Dislike ---
-app.post('/api/v1/interactions/like/:videoId', async (req, res) => {
+app.post('/like/:videoId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -65,7 +65,7 @@ app.post('/api/v1/interactions/like/:videoId', async (req, res) => {
 });
 
 // Get like status for a user
-app.get('/api/v1/interactions/like/:videoId', async (req, res) => {
+app.get('/like/:videoId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     const counts = await getCounts(req.params.videoId);
@@ -87,7 +87,7 @@ async function getCounts(videoId) {
 }
 
 // --- Comments ---
-app.post('/api/v1/interactions/comments/:videoId', async (req, res) => {
+app.post('/comments/:videoId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -108,7 +108,7 @@ app.post('/api/v1/interactions/comments/:videoId', async (req, res) => {
   }
 });
 
-app.get('/api/v1/interactions/comments/:videoId', async (req, res) => {
+app.get('/comments/:videoId', async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const comments = await Comment.find({ video: req.params.videoId, parent: null })
@@ -131,7 +131,7 @@ app.get('/api/v1/interactions/comments/:videoId', async (req, res) => {
   }
 });
 
-app.put('/api/v1/interactions/comments/:commentId', async (req, res) => {
+app.put('/comments/:commentId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     const comment = await Comment.findById(req.params.commentId);
@@ -146,7 +146,7 @@ app.put('/api/v1/interactions/comments/:commentId', async (req, res) => {
   }
 });
 
-app.delete('/api/v1/interactions/comments/:commentId', async (req, res) => {
+app.delete('/comments/:commentId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     const comment = await Comment.findById(req.params.commentId);

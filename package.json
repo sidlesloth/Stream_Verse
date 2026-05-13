@@ -24,8 +24,37 @@
     "dev:interaction": "cd services/interaction-service && pnpm dev",
     "dev:search": "cd services/search-service && pnpm dev",
     "dev:notification": "cd services/notification-service && pnpm dev",
-    "dev:client": "cd client && pnpm dev"
+    "dev:client": "cd client && pnpm dev",
+    "dev:backend": "npx -y concurrently \"pnpm dev:gateway\" \"pnpm dev:auth\" \"pnpm dev:video\" \"pnpm dev:transcode\" \"pnpm dev:stream\" \"pnpm dev:channel\" \"pnpm dev:interaction\" \"pnpm dev:search\" \"pnpm dev:notification\"",
+    "dev": "npx -y concurrently \"pnpm dev:backend\" \"pnpm dev:client\"",
+    "start:gateway": "cd services/api-gateway && pnpm start",
+    "start:auth": "cd services/auth-service && pnpm start",
+    "start:video": "cd services/video-service && pnpm start",
+    "start:transcode": "cd services/transcode-service && pnpm start",
+    "start:stream": "cd services/stream-service && pnpm start",
+    "start:channel": "cd services/channel-service && pnpm start",
+    "start:interaction": "cd services/interaction-service && pnpm start",
+    "start:search": "cd services/search-service && pnpm start",
+    "start:notification": "cd services/notification-service && pnpm start",
+    "start:backend": "npx -y concurrently \"pnpm start:gateway\" \"pnpm start:auth\" \"pnpm start:video\" \"pnpm start:transcode\" \"pnpm start:stream\" \"pnpm start:channel\" \"pnpm start:interaction\" \"pnpm start:search\" \"pnpm start:notification\""
   },
   "author": "StreamVerse Team",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "hls.js": "^1.6.16",
+    "lucide-react": "^1.14.0",
+    "react-dropzone": "^15.0.0",
+    "react-router-dom": "^7.15.0",
+    "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.6.0",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  }
 }

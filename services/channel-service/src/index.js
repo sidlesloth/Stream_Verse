@@ -18,7 +18,7 @@ mongoose.connect(`${process.env.MONGO_URI}/streamverse_channels`, { authSource: 
   .catch(err => { console.error('Channel DB error:', err.message); process.exit(1); });
 
 // Create channel
-app.post('/api/v1/channels', async (req, res) => {
+app.post('/', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -35,7 +35,7 @@ app.post('/api/v1/channels', async (req, res) => {
 });
 
 // Get channel by ID
-app.get('/api/v1/channels/:id', async (req, res) => {
+app.get('/:id', async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.id);
     if (!channel) return res.status(404).json({ error: 'Channel not found' });
@@ -52,7 +52,7 @@ app.get('/api/v1/channels/:id', async (req, res) => {
 });
 
 // Get channel by owner ID
-app.get('/api/v1/channels/user/:userId', async (req, res) => {
+app.get('/user/:userId', async (req, res) => {
   try {
     const channel = await Channel.findOne({ owner: req.params.userId });
     if (!channel) return res.status(404).json({ error: 'Channel not found' });
@@ -63,7 +63,7 @@ app.get('/api/v1/channels/user/:userId', async (req, res) => {
 });
 
 // Get my channel
-app.get('/api/v1/channels/me/channel', async (req, res) => {
+app.get('/me/channel', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -78,7 +78,7 @@ app.get('/api/v1/channels/me/channel', async (req, res) => {
 });
 
 // Update channel
-app.put('/api/v1/channels/:id', async (req, res) => {
+app.put('/:id', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     const channel = await Channel.findById(req.params.id);
@@ -98,7 +98,7 @@ app.put('/api/v1/channels/:id', async (req, res) => {
 });
 
 // Subscribe
-app.post('/api/v1/channels/:id/subscribe', async (req, res) => {
+app.post('/:id/subscribe', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -120,7 +120,7 @@ app.post('/api/v1/channels/:id/subscribe', async (req, res) => {
 });
 
 // Unsubscribe
-app.delete('/api/v1/channels/:id/subscribe', async (req, res) => {
+app.delete('/:id/subscribe', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -136,7 +136,7 @@ app.delete('/api/v1/channels/:id/subscribe', async (req, res) => {
 });
 
 // Get subscriptions for a user
-app.get('/api/v1/channels/subscriptions/list', async (req, res) => {
+app.get('/subscriptions/list', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });

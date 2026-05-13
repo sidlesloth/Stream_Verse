@@ -21,11 +21,14 @@ mongoose.connect(`${process.env.MONGO_URI}/streamverse_stream`, { authSource: 'a
   .catch(err => { console.error('Stream DB error:', err.message); process.exit(1); });
 
 // Serve HLS files (m3u8 playlists and .ts segments)
-app.get('/api/v1/stream/:videoId/:filename', (req, res) => {
+app.get('/:videoId/:filename', (req, res) => {
   const { videoId, filename } = req.params;
   const filePath = path.join(HLS_DIR, videoId, filename);
 
+  console.log(`Stream Service: Request for ${videoId}/${filename}. Looking at: ${filePath}`);
+
   if (!fs.existsSync(filePath)) {
+    console.log(`Stream Service: ✗ File not found at ${filePath}`);
     return res.status(404).json({ error: 'File not found' });
   }
 
@@ -45,7 +48,7 @@ app.get('/api/v1/stream/:videoId/:filename', (req, res) => {
 });
 
 // Get watch progress
-app.get('/api/v1/stream/progress/:videoId', async (req, res) => {
+app.get('/progress/:videoId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.json({ progress: 0 });
@@ -58,7 +61,7 @@ app.get('/api/v1/stream/progress/:videoId', async (req, res) => {
 });
 
 // Update watch progress
-app.put('/api/v1/stream/progress/:videoId', async (req, res) => {
+app.put('/progress/:videoId', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });

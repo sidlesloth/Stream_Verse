@@ -14,12 +14,18 @@ exports.uploadVideo = async (req, res) => {
     const { title, description, tags, category } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
 
+    // 5. SAVE TO DATABASE
+    // IMPORTANT: We only store the "Metadata" (title, path, uploader ID) in MongoDB.
+    // We DO NOT store the actual video file in the database because:
+    // a) It would make the database extremely slow.
+    // b) Filesystems are much better at handling large binary data.
+    // c) It allows us to use tools like FFmpeg directly on the file.
     const video = await Video.create({
       title,
       description: description || '',
       tags: tags ? (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : tags) : [],
       category: category || 'uncategorized',
-      filePath: req.file.path,
+      filePath: req.file.path, // We just store the "map" to where the file is on the disk
       uploader: userId,
       uploaderName: req.headers['x-user-name'] || req.body.uploaderName || 'Unknown',
       status: 'processing',

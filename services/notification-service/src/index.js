@@ -103,7 +103,7 @@ async function startRabbitMQ() {
 }
 
 // REST endpoints
-app.get('/api/v1/notifications', async (req, res) => {
+app.get('/', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });
@@ -120,7 +120,7 @@ app.get('/api/v1/notifications', async (req, res) => {
   }
 });
 
-app.put('/api/v1/notifications/read', async (req, res) => {
+app.put('/read', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     if (!userId) return res.status(401).json({ error: 'Auth required' });

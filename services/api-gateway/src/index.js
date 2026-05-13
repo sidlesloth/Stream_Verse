@@ -3,6 +3,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '..
 const express = require('express');//main web framework
 const cors = require('cors');//for cross origin resource sharing
 const morgan = require('morgan');//for logging requests
+console.log('API Gateway JWT Secret length:', process.env.JWT_SECRET?.length || 0);
 const rateLimit = require('express-rate-limit');//for limiting requests and avoiding DoS attacks
 const { createProxyMiddleware } = require('http-proxy-middleware');//for proxying requests to services
 const { optionalAuth, requireAuth } = require('./middleware/auth');//for authentication and authorization
@@ -45,8 +46,9 @@ const createProxy = (target) =>
     target,
     changeOrigin: true,
     onProxyReq: (proxyReq, req) => {
-      if (req.userId) {
-        proxyReq.setHeader('x-user-id', req.userId);
+      // Ensure headers are preserved during proxying
+      if (req.headers['x-user-id']) {
+        proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
       }
     },
     onError: (err, req, res) => {

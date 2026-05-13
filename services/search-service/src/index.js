@@ -34,7 +34,7 @@ videoSchema.index({ title: 'text', description: 'text', tags: 'text' });
 const Video = mongoose.model('Video', videoSchema);
 
 // Full-text search
-app.get('/api/v1/search', async (req, res) => {
+app.get('/', async (req, res) => {
   try {
     const { q, category, sort = 'relevance', page = 1, limit = 20, duration } = req.query;
     const query = { status: 'ready' };
@@ -73,7 +73,7 @@ app.get('/api/v1/search', async (req, res) => {
 });
 
 // Trending (top viewed in last 7 days, falling back to all time)
-app.get('/api/v1/search/trending', async (req, res) => {
+app.get('/trending', async (req, res) => {
   try {
     const { limit = 20 } = req.query;
     const videos = await Video.find({ status: 'ready' })
@@ -86,7 +86,7 @@ app.get('/api/v1/search/trending', async (req, res) => {
 });
 
 // Basic recommendations (just recent + popular for now)
-app.get('/api/v1/search/recommendations', async (req, res) => {
+app.get('/recommendations', async (req, res) => {
   try {
     const { limit = 20, exclude } = req.query;
     const query = { status: 'ready' };

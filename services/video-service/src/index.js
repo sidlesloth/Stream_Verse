@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-app.use('/api/v1/videos', videoRoutes);
+app.use('/', videoRoutes);
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'video-service', timestamp: new Date().toISOString() });
 });
