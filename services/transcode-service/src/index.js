@@ -45,12 +45,40 @@ async function startConsumer() {
           ...(thumbnailPath ? { thumbnail: `/api/v1/stream/${job.videoId}/thumbnail.jpg` } : {}),
         });
 
-        // Notify via RabbitMQ
+        // 1. Notify uploader
         channel.sendToQueue('notification.send', Buffer.from(JSON.stringify({
+          userId: job.userId,
           type: 'video_ready',
           videoId: job.videoId,
           message: 'Your video has been processed and is now ready to watch!',
         })), { persistent: true });
+
+        // 2. Notify subscribers (async)
+        try {
+          // Get creator's channel
+          const chanRes = await fetch(`http://localhost:${process.env.CHANNEL_SERVICE_PORT || 3005}/user/${job.userId}`);
+          if (chanRes.ok) {
+            const { channel: creatorChannel } = await chanRes.json();
+            
+            // Get subscribers
+            const subsRes = await fetch(`http://localhost:${process.env.CHANNEL_SERVICE_PORT || 3005}/${creatorChannel._id}/subscribers`);
+            if (subsRes.ok) {
+              const { subscriberIds } = await subsRes.json();
+              subscriberIds.forEach(subId => {
+                if (subId !== job.userId) { // Don't notify yourself
+                  channel.sendToQueue('notification.send', Buffer.from(JSON.stringify({
+                    userId: subId,
+                    type: 'new_video',
+                    videoId: job.videoId,
+                    message: `${creatorChannel.name} just uploaded a new video!`,
+                  })), { persistent: true });
+                }
+              });
+            }
+          }
+        } catch (subErr) {
+          console.error('Failed to notify subscribers:', subErr.message);
+        }
 
         console.log(`✓ Video ${job.videoId} transcoded successfully`);
         channel.ack(msg);

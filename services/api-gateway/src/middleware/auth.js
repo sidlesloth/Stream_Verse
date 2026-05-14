@@ -11,9 +11,9 @@ const optionalAuth = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
-    // Set the header directly here so it's ready for proxying
     req.headers['x-user-id'] = decoded.userId.toString();
-    console.log('Optional Auth: Valid token, set x-user-id header for', req.userId);
+    if (decoded.name) req.headers['x-user-name'] = decoded.name;
+    console.log('Optional Auth: Valid token, set headers for', req.userId);
   } catch (e) {
     console.log('Optional Auth: Invalid token -', e.message);
     // Token invalid — continue without auth
@@ -31,6 +31,8 @@ const requireAuth = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
+    req.headers['x-user-id'] = decoded.userId.toString();
+    if (decoded.name) req.headers['x-user-name'] = decoded.name;
     next();
   } catch (e) {
     res.status(401).json({ error: 'Invalid or expired token' });

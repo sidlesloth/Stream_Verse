@@ -10,18 +10,19 @@ const FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
  */
 function transcodeVariant(inputPath, outputDir, preset) {
   return new Promise((resolve, reject) => {
-    const variantName = `${preset.resolution}_${preset.quality}`;
+    const variantName = preset.name; // Use the unique name from our matrix
     const segmentPattern = path.join(outputDir, `${variantName}_%03d.ts`);
     const playlistPath = path.join(outputDir, `${variantName}.m3u8`);
-
+ 
     const args = [
       '-i', inputPath,
-      '-vf', `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=increase,pad=${preset.width}:${preset.height}:(ow-iw)/2:(oh-ih)/2`,
+      '-vf', `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=decrease,pad=${preset.width}:${preset.height}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
       '-c:v', 'libx264',
       '-b:v', preset.videoBitrate,
       '-maxrate', preset.videoBitrate,
       '-bufsize', `${parseInt(preset.videoBitrate) * 2}k`,
       '-c:a', 'aac',
+      '-b:a', preset.audioBitrate, // Set audio bitrate correctly!
       '-ar', '44100',
       '-hls_time', '6',
       '-hls_playlist_type', 'vod',
@@ -30,20 +31,17 @@ function transcodeVariant(inputPath, outputDir, preset) {
       '-y',
       playlistPath,
     ];
-
+ 
     console.log(`  Transcoding ${variantName}...`);
     const proc = spawn(FFMPEG_PATH, args);
-
+ 
     let stderr = '';
     proc.stderr.on('data', (data) => { stderr += data.toString(); });
     proc.on('close', (code) => {
       if (code === 0) {
         console.log(`  ✓ ${variantName} complete`);
         resolve({
-          resolution: preset.resolution,
-          quality: preset.quality,
-          videoBitrate: preset.videoBitrate,
-          audioBitrate: preset.audioBitrate,
+          ...preset,
           path: `${variantName}.m3u8`,
         });
       } else {
@@ -62,9 +60,9 @@ function generateMasterPlaylist(outputDir, qualities) {
 
   for (const q of qualities) {
     const bandwidth = parseInt(q.videoBitrate) * 1000 + parseInt(q.audioBitrate) * 1000;
-    const resolution = q.resolution === '360p' ? '640x360' :
-      q.resolution === '720p' ? '1280x720' : '1920x1080';
-    manifest += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${resolution},NAME="${q.resolution} ${q.quality}"\n`;
+    const resolution = `${q.width}x${q.height}`;
+    // Store extra info in the NAME tag for parsing in the frontend
+    manifest += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${resolution},NAME="${q.resolution}|${q.videoQuality}|${q.audioQuality}"\n`;
     manifest += `${q.path}\n`;
   }
 

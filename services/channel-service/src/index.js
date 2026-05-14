@@ -17,6 +17,27 @@ mongoose.connect(`${process.env.MONGO_URI}/streamverse_channels`, { authSource: 
   .then(() => console.log('Channel DB connected'))
   .catch(err => { console.error('Channel DB error:', err.message); process.exit(1); });
 
+// --- RabbitMQ for Notifications ---
+let rabbitChannel;
+async function connectRabbit() {
+  try {
+    const conn = await require('amqplib').connect(process.env.RABBITMQ_URL);
+    rabbitChannel = await conn.createChannel();
+    await rabbitChannel.assertQueue('notification.send', { durable: true });
+    console.log('RabbitMQ connected (channel-service)');
+  } catch (err) {
+    console.error('RabbitMQ error:', err.message);
+    setTimeout(connectRabbit, 5000);
+  }
+}
+connectRabbit();
+
+function sendNotification(userId, type, message, data = {}) {
+  if (!rabbitChannel) return;
+  const payload = JSON.stringify({ userId, type, message, ...data });
+  rabbitChannel.sendToQueue('notification.send', Buffer.from(payload), { persistent: true });
+}
+
 // Create channel
 app.post('/', async (req, res) => {
   try {
@@ -51,11 +72,17 @@ app.get('/:id', async (req, res) => {
   }
 });
 
-// Get channel by owner ID
+// Get channel by owner ID (auto-create if missing)
 app.get('/user/:userId', async (req, res) => {
   try {
-    const channel = await Channel.findOne({ owner: req.params.userId });
-    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+    let channel = await Channel.findOne({ owner: req.params.userId });
+    if (!channel) {
+      // Auto-create channel if it doesn't exist
+      channel = await Channel.create({ 
+        owner: req.params.userId, 
+        name: `Channel ${req.params.userId.slice(-4)}` 
+      });
+    }
     res.json({ channel });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -113,6 +140,10 @@ app.post('/:id/subscribe', async (req, res) => {
     await Subscription.create({ subscriber: userId, channel: channel._id });
     channel.subscriberCount += 1;
     await channel.save();
+
+    // Notify owner
+    sendNotification(channel.owner, 'subscription', `You have a new subscriber!`, { channelId: channel._id });
+
     res.json({ message: 'Subscribed', subscriberCount: channel.subscriberCount });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -142,6 +173,16 @@ app.get('/subscriptions/list', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Auth required' });
     const subs = await Subscription.find({ subscriber: userId }).populate('channel');
     res.json({ subscriptions: subs.map(s => s.channel) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get subscribers for a channel (internal)
+app.get('/:id/subscribers', async (req, res) => {
+  try {
+    const subs = await Subscription.find({ channel: req.params.id });
+    res.json({ subscriberIds: subs.map(s => s.subscriber) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

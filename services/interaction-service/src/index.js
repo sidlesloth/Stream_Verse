@@ -15,6 +15,31 @@ mongoose.connect(`${process.env.MONGO_URI}/streamverse_interactions`, { authSour
   .then(() => console.log('Interaction DB connected'))
   .catch(err => { console.error('Interaction DB error:', err.message); process.exit(1); });
 
+// --- RabbitMQ for Notifications ---
+let rabbitChannel;
+async function connectRabbit() {
+  try {
+    const conn = await require('amqplib').connect(process.env.RABBITMQ_URL);
+    rabbitChannel = await conn.createChannel();
+    await rabbitChannel.assertQueue('notification.send', { durable: true });
+    console.log('RabbitMQ connected (interaction-service)');
+  } catch (err) {
+    console.error('RabbitMQ error:', err.message);
+    setTimeout(connectRabbit, 5000);
+  }
+}
+connectRabbit();
+
+function sendNotification(userId, type, message, data = {}) {
+  if (!rabbitChannel) {
+    console.error('RabbitMQ channel not ready for notification');
+    return;
+  }
+  const payload = JSON.stringify({ userId, type, message, ...data });
+  console.log(`[Notification] Emitting ${type} to user ${userId}`);
+  rabbitChannel.sendToQueue('notification.send', Buffer.from(payload), { persistent: true });
+}
+
 // --- Models ---
 const likeSchema = new mongoose.Schema({
   user: { type: String, required: true },
@@ -58,6 +83,22 @@ app.post('/like/:videoId', async (req, res) => {
 
     await Like.create({ user: userId, video: req.params.videoId, type });
     const counts = await getCounts(req.params.videoId);
+    
+    // Notify uploader (async)
+    if (type === 'like') {
+      try {
+        const videoRes = await fetch(`http://localhost:${process.env.VIDEO_SERVICE_PORT || 3002}/user-id/${req.params.videoId}`);
+        if (videoRes.ok) {
+          const { uploaderId } = await videoRes.json();
+          if (uploaderId && uploaderId !== userId) {
+            sendNotification(uploaderId, 'like', `Someone liked your video!`, { videoId: req.params.videoId });
+          }
+        }
+      } catch (err) {
+        console.error('Notification trigger failed:', err.message);
+      }
+    }
+
     res.json({ message: 'Added', userAction: type, ...counts });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -1,11 +1,11 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
+const generateTokens = (userId, name) => {
+  const accessToken = jwt.sign({ userId, name }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
   });
-  const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
+  const refreshToken = jwt.sign({ userId, name }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   });
   return { accessToken, refreshToken };
@@ -28,7 +28,7 @@ exports.register = async (req, res) => {
 
     const user = await User.create({ name, email, password, role: role || 'user' });
 
-    const tokens = generateTokens(user._id);
+    const tokens = generateTokens(user._id, user.name);
     res.status(201).json({ user, ...tokens });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -47,7 +47,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const tokens = generateTokens(user._id);
+    const tokens = generateTokens(user._id, user.name);
     res.json({ user, ...tokens });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -67,7 +67,7 @@ exports.refreshToken = async (req, res) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    const tokens = generateTokens(user._id);
+    const tokens = generateTokens(user._id, user.name);
     res.json({ user, ...tokens });
   } catch (error) {
     res.status(401).json({ error: 'Invalid refresh token' });

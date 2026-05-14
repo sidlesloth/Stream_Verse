@@ -13,14 +13,14 @@ const PORT = process.env.API_GATEWAY_PORT || 3000;
 
 // Service URLs for ease in use later
 const SERVICES = {
-  auth: `http://localhost:${process.env.AUTH_SERVICE_PORT || 3001}`,
-  video: `http://localhost:${process.env.VIDEO_SERVICE_PORT || 3002}`,
-  transcode: `http://localhost:${process.env.TRANSCODE_SERVICE_PORT || 3003}`,
-  stream: `http://localhost:${process.env.STREAM_SERVICE_PORT || 3004}`,
-  channel: `http://localhost:${process.env.CHANNEL_SERVICE_PORT || 3005}`,
-  interaction: `http://localhost:${process.env.INTERACTION_SERVICE_PORT || 3006}`,
-  search: `http://localhost:${process.env.SEARCH_SERVICE_PORT || 3007}`,
-  notification: `http://localhost:${process.env.NOTIFICATION_SERVICE_PORT || 3008}`,
+  auth: `http://127.0.0.1:${process.env.AUTH_SERVICE_PORT || 3001}`,
+  video: `http://127.0.0.1:${process.env.VIDEO_SERVICE_PORT || 3002}`,
+  transcode: `http://127.0.0.1:${process.env.TRANSCODE_SERVICE_PORT || 3003}`,
+  stream: `http://127.0.0.1:${process.env.STREAM_SERVICE_PORT || 3004}`,
+  channel: `http://127.0.0.1:${process.env.CHANNEL_SERVICE_PORT || 3005}`,
+  interaction: `http://127.0.0.1:${process.env.INTERACTION_SERVICE_PORT || 3006}`,
+  search: `http://127.0.0.1:${process.env.SEARCH_SERVICE_PORT || 3007}`,
+  notification: `http://127.0.0.1:${process.env.NOTIFICATION_SERVICE_PORT || 3008}`,
 };
 
 // Global middleware
@@ -50,6 +50,9 @@ const createProxy = (target) =>
       if (req.headers['x-user-id']) {
         proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
       }
+      if (req.headers['x-user-name']) {
+        proxyReq.setHeader('x-user-name', req.headers['x-user-name']);
+      }
     },
     onError: (err, req, res) => {
       console.error(`Proxy error to ${target}:`, err.message);
@@ -76,17 +79,37 @@ app.use('/api/v1/interactions', optionalAuth, createProxy(SERVICES.interaction))
 // ─── Search Service (public) ───
 app.use('/api/v1/search', createProxy(SERVICES.search));
 
-// ─── Notification Service ───
-app.use('/api/v1/notifications', requireAuth, createProxy(SERVICES.notification));
+const notificationProxy = createProxyMiddleware({
+  target: SERVICES.notification,
+  changeOrigin: true,
+  ws: true,
+  pathRewrite: {
+    '^/api/v1/notifications': '', // Remove the prefix!
+  },
+  onProxyReq: (proxyReq, req) => {
+    if (req.headers['x-user-id']) {
+      proxyReq.setHeader('x-user-id', req.headers['x-user-id']);
+    }
+  }
+});
+app.use('/api/v1/notifications', optionalAuth, notificationProxy);
 
 // 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {//starts http server
+const server = app.listen(PORT, () => {
   console.log(`API Gateway running on port ${PORT}`);
-  console.log('Proxying to services:', SERVICES);
+});
+
+// Handle WebSocket upgrades
+server.on('upgrade', (req, socket, head) => {
+  if (req.url.startsWith('/api/v1/notifications') || req.url.includes('socket.io')) {
+    notificationProxy.upgrade(req, socket, head);
+  } else {
+    socket.destroy();
+  }
 });
 
 module.exports = app;

@@ -31,7 +31,7 @@ const VideoCard = ({ video }) => {
             {video.title}
           </h3>
           <p className="text-gray-400 text-sm mt-1 hover:text-white transition-colors">
-            {video.creatorId?.name || 'Anonymous'}
+            {video.uploaderName || 'Anonymous'}
           </p>
           <p className="text-gray-500 text-xs mt-0.5">
             {video.views} views • {new Date(video.createdAt).toLocaleDateString()}

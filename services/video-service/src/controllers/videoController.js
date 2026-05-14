@@ -33,6 +33,7 @@ exports.uploadVideo = async (req, res) => {
 
     publishToQueue('video.transcode', {
       videoId: video._id.toString(),
+      userId, // Add this so transcoder knows who to notify
       filePath: req.file.path,
       outputDir: path.resolve(process.env.HLS_OUTPUT_DIR || './hls-output', video._id.toString()),
     });
@@ -115,6 +116,17 @@ exports.incrementViews = async (req, res) => {
     const video = await Video.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }, { new: true });
     if (!video) return res.status(404).json({ error: 'Video not found' });
     res.json({ views: video.views });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Internal: get uploader ID for notifications
+exports.getUploaderId = async (req, res) => {
+  try {
+    const video = await Video.findById(req.params.id).select('uploader');
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+    res.json({ uploaderId: video.uploader });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -2,22 +2,34 @@ import React, { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const NotificationBell = () => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    const socket = io('http://localhost:3000'); // Replace with your backend URL
+    if (!user) return;
+
+    const socket = io('http://localhost:3000', {
+      path: '/api/v1/notifications/socket.io'
+    });
+
+    socket.on('connect', () => {
+      console.log('Connected to notification service');
+      socket.emit('register', user._id || user.id); // Use _id!
+    });
 
     socket.on('notification', (data) => {
+      console.log('New notification received:', data);
       setNotifications(prev => [data, ...prev]);
       setUnreadCount(prev => prev + 1);
     });
 
     return () => socket.disconnect();
-  }, []);
+  }, [user]);
 
   const toggleDropdown = () => {
     setShowDropdown(!showDropdown);
@@ -60,9 +72,13 @@ const NotificationBell = () => {
               ) : (
                 notifications.map((notif, index) => (
                   <div key={index} className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
-                    <p className="text-white text-sm font-medium">{notif.title}</p>
-                    <p className="text-gray-400 text-xs mt-1">{notif.message}</p>
-                    <p className="text-gray-500 text-[10px] mt-2">{notif.time || 'Just now'}</p>
+                    <p className="text-brand-primary text-[10px] font-bold uppercase tracking-wider mb-1">
+                      {(notif.type || 'info').replace('_', ' ')}
+                    </p>
+                    <p className="text-white text-sm leading-snug">{notif.message}</p>
+                    <p className="text-gray-500 text-[10px] mt-2">
+                      {notif.createdAt ? new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                    </p>
                   </div>
                 ))
               )}

@@ -26,5 +26,6 @@ router.get('/:id', videoController.getVideo);
 router.put('/:id', videoController.updateVideo);
 router.delete('/:id', videoController.deleteVideo);
 router.post('/:id/views', videoController.incrementViews);
+router.get('/user-id/:id', videoController.getUploaderId);
 
 module.exports = router;

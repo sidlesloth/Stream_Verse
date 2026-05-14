@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Settings, Maximize, SkipBack, SkipForward } from 'lucide-react';
 
-const VideoPlayer = ({ src, poster }) => {
+const VideoPlayer = ({ src, poster, onPlay }) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -12,7 +12,7 @@ const VideoPlayer = ({ src, poster }) => {
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [qualities, setQualities] = useState([]);
-  const [currentQuality, setCurrentQuality] = useState(-1);
+  const [currentSelection, setCurrentSelection] = useState({ res: '720p', video: 'Medium', audio: 'Medium' });
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const hlsRef = useRef(null);
 
@@ -25,15 +25,19 @@ const VideoPlayer = ({ src, poster }) => {
         hlsRef.current = hls;
         hls.loadSource(src);
         hls.attachMedia(video);
-        
+
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          const levels = hls.levels.map((level, index) => ({
-            index,
-            label: `${level.height}p (${level.name || 'High'})`,
-          }));
+          const levels = hls.levels.map((level, index) => {
+            const [res, video, audio] = (level.name || '').split('|');
+            return { index, res, video, audio };
+          });
           setQualities(levels);
-          if (levels.length > 0) {
-            setCurrentQuality(0);
+
+          // Try to find a default match
+          const defaultLevel = levels.find(l => l.res === '720p' && l.video === 'Medium' && l.audio === 'Medium') || levels[0];
+          if (defaultLevel) {
+            hls.currentLevel = defaultLevel.index;
+            setCurrentSelection({ res: defaultLevel.res, video: defaultLevel.video, audio: defaultLevel.audio });
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -60,6 +64,17 @@ const VideoPlayer = ({ src, poster }) => {
     if (videoRef.current.paused) {
       videoRef.current.play();
       setIsPlaying(true);
+      
+      // Increment views only once per session
+      const videoId = src.split('/').slice(-2, -1)[0];
+      if (videoId && !window[`viewed_${videoId}`]) {
+        fetch(`http://localhost:3000/api/v1/videos/${videoId}/views`, { method: 'POST' })
+          .then(() => {
+            window[`viewed_${videoId}`] = true;
+            if (onPlay) onPlay();
+          })
+          .catch(err => console.error('Failed to increment views:', err));
+      }
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -101,8 +116,26 @@ const VideoPlayer = ({ src, poster }) => {
     }
   };
 
+  const handleQualityChange = (type, value) => {
+    const newSelection = { ...currentSelection, [type]: value };
+    setCurrentSelection(newSelection);
+
+    if (hlsRef.current) {
+      const match = qualities.find(q =>
+        q.res === newSelection.res &&
+        q.video === newSelection.video &&
+        q.audio === newSelection.audio
+      );
+
+      if (match) {
+        console.log(`Switching to: ${match.res} V:${match.video} A:${match.audio}`);
+        hlsRef.current.currentLevel = match.index;
+      }
+    }
+  };
+
   return (
-    <div 
+    <div
       className="relative aspect-video bg-black rounded-2xl overflow-hidden group shadow-2xl border border-white/5"
       onMouseMove={() => setShowControls(true)}
       onMouseLeave={() => isPlaying && setShowControls(false)}
@@ -138,10 +171,10 @@ const VideoPlayer = ({ src, poster }) => {
                   {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                 </button>
                 <div className="w-0 group-hover/volume:w-24 overflow-hidden transition-all duration-300">
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="1" 
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
                     step="0.05"
                     value={isMuted ? 0 : volume}
                     onChange={(e) => {
@@ -149,7 +182,7 @@ const VideoPlayer = ({ src, poster }) => {
                       setVolume(newVol);
                       if (newVol > 0) setIsMuted(false);
                     }}
-                    className="w-20 h-1 accent-brand-primary cursor-pointer" 
+                    className="w-20 h-1 accent-brand-primary cursor-pointer"
                   />
                 </div>
               </div>
@@ -160,40 +193,77 @@ const VideoPlayer = ({ src, poster }) => {
 
             <div className="flex items-center gap-4 relative">
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setShowQualityMenu(!showQualityMenu)}
                   className="text-white hover:text-brand-primary transition-colors"
                 >
                   <Settings className="w-6 h-6" />
                 </button>
-                
+
                 {showQualityMenu && (
-                  <div className="absolute bottom-full right-0 mb-2 w-32 bg-[#16171d] border border-white/10 rounded-xl shadow-2xl py-2 overflow-hidden z-50">
-                    <div className="px-3 py-1 border-b border-white/5 mb-1">
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Quality</p>
+                  <div className="absolute bottom-full right-0 mb-4 w-64 bg-[#16171d]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-4 z-50">
+                    <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-brand-primary" />
+                      Stream Quality
+                    </h3>
+
+                    <div className="space-y-4">
+                      {/* Resolution */}
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Resolution</p>
+                        <div className="flex gap-2">
+                          {['720p', '1080p'].map(r => (
+                            <button
+                              key={r}
+                              onClick={() => handleQualityChange('res', r)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentSelection.res === r ? 'bg-brand-primary text-white shadow-lg' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                }`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Video Quality */}
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Video Bitrate</p>
+                        <div className="flex gap-2">
+                          {['Low', 'Medium', 'High'].map(q => (
+                            <button
+                              key={q}
+                              onClick={() => handleQualityChange('video', q)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentSelection.video === q ? 'bg-brand-primary text-white shadow-lg' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                }`}
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Audio Quality */}
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Audio Bitrate</p>
+                        <div className="flex gap-2">
+                          {['Low', 'Medium', 'High'].map(q => (
+                            <button
+                              key={q}
+                              onClick={() => handleQualityChange('audio', q)}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${currentSelection.audio === q ? 'bg-brand-primary text-white shadow-lg' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                }`}
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    {qualities.map((q) => (
-                      <button
-                        key={q.index}
-                        onClick={() => {
-                          if (hlsRef.current) {
-                            hlsRef.current.currentLevel = q.index;
-                            setCurrentQuality(q.index);
-                          }
-                          setShowQualityMenu(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          currentQuality === q.index ? 'text-brand-primary bg-brand-primary/10 font-bold' : 'text-gray-300 hover:bg-white/5'
-                        }`}
-                      >
-                        {q.label}
-                      </button>
-                    ))}
                   </div>
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={toggleFullscreen}
                 className="text-white hover:text-brand-primary transition-colors"
               >
