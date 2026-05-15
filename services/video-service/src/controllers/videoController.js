@@ -131,3 +131,15 @@ exports.getUploaderId = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// [DASHBOARD FIX] This function fetches all videos for a specific user
+exports.getVideosByUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    // We filter by 'uploader' and sort by newest first
+    const videos = await Video.find({ uploader: userId }).sort({ createdAt: -1 });
+    res.json({ videos });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -1,5 +1,17 @@
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const User = require('../models/User');
+
+// Create reusable transporter object using SMTP transport
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT),
+  secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 const generateTokens = (userId, name) => {
   const accessToken = jwt.sign({ userId, name }, process.env.JWT_SECRET, {
@@ -94,6 +106,38 @@ exports.updateProfile = async (req, res) => {
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // For security, don't reveal if user exists. Just say "If exists, email sent"
+      return res.json({ message: 'If an account with that email exists, a new password has been sent.' });
+    }
+
+    // 1. Generate a random temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+
+    // 2. Update user password
+    user.password = tempPassword;
+    await user.save();
+
+    // 3. "Send" Email (Logging to console for now)
+    console.log('-----------------------------------------');
+    console.log(`[EMAIL SENT TO: ${email}]`);
+    console.log(`Subject: Your StreamVerse Temporary Password`);
+    console.log(`Body: Hello ${user.name}, your new temporary password is: ${tempPassword}`);
+    console.log('Please log in and change it immediately.');
+    console.log('-----------------------------------------');
+
+    res.json({ message: 'If an account with that email exists, a new password has been sent.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

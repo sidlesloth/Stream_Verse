@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: #aa3bff;
-  --color-brand-secondary: #c084fc;
+  --color-brand-primary: #15304F;
+  --color-brand-secondary: #59CFCF;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 }
 
@@ -26,4 +26,3 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
