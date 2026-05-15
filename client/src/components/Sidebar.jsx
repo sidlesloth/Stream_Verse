@@ -4,13 +4,13 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NavItem = ({ to, icon: Icon, label }) => (
-  <NavLink 
+  <NavLink
     to={to}
     className={({ isActive }) => `
       flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
-      ${isActive 
-        ? 'bg-brand-primary/10 text-brand-primary' 
-        : 'text-gray-400 hover:bg-white/5 hover:text-white'}
+      ${isActive
+        ? 'bg-brand-primary/10 text-[#1CD6D6]'
+        : 'text-white-400 hover:bg-purple/5 hover:text-white'}
     `}
   >
     <Icon className="w-5 h-5" />

@@ -3,7 +3,7 @@
 @theme {
   --color-brand-primary: #15304F;
   --color-brand-secondary: #59CFCF;
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Bahnschrift", system-ui, -apple-system, sans-serif;
 }
 
 :root {
