@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const amqplib = require('amqplib');
+const nodemailer = require('nodemailer'); // Added for email sending capabilities
 
 const app = express();
 const server = http.createServer(app);
@@ -66,42 +67,6 @@ function sendToUser(userId, notification) {
   }
 }
 
-// RabbitMQ consumer
-async function startRabbitMQ() {
-  try {
-    const connection = await amqplib.connect(process.env.RABBITMQ_URL);
-    const channel = await connection.createChannel();
-    await channel.assertQueue('notification.send', { durable: true });
-
-    channel.consume('notification.send', async (msg) => {
-      if (!msg) return;
-      try {
-        const data = JSON.parse(msg.content.toString());
-        console.log('Notification event:', data);
-
-        if (data.userId) {
-          const notif = await Notification.create({
-            user: data.userId,
-            type: data.type || 'info',
-            message: data.message || 'New notification',
-            data: data,
-          });
-          sendToUser(data.userId, notif);
-        }
-
-        channel.ack(msg);
-      } catch (error) {
-        console.error('Failed to process notification:', error.message);
-        channel.ack(msg);
-      }
-    });
-    console.log('RabbitMQ connected (notification-service)');
-  } catch (error) {
-    console.error('RabbitMQ connection failed:', error.message);
-    setTimeout(startRabbitMQ, 5000);
-  }
-}
-
 // REST endpoints
 app.get('/', async (req, res) => {
   try {
@@ -134,6 +99,80 @@ app.put('/read', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'notification-service', timestamp: new Date().toISOString() });
 });
+
+// Setup Nodemailer Transporter using centralized environmental variables
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io',
+  port: process.env.SMTP_PORT || 2525,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// RabbitMQ consumer
+async function startRabbitMQ() {
+  try {
+    const connection = await amqplib.connect(process.env.RABBITMQ_URL);
+    const channel = await connection.createChannel();
+    
+    // Existing Web UI Notification queue logic
+    await channel.assertQueue('notification.send', { durable: true });
+
+    channel.consume('notification.send', async (msg) => {
+      if (!msg) return;
+      try {
+        const data = JSON.parse(msg.content.toString());
+        console.log('Notification event:', data);
+
+        if (data.userId) {
+          const notif = await Notification.create({
+            user: data.userId,
+            type: data.type || 'info',
+            message: data.message || 'New notification',
+            data: data,
+          });
+          sendToUser(data.userId, notif);
+        }
+
+        channel.ack(msg);
+      } catch (error) {
+        console.error('Failed to process notification:', error.message);
+        channel.ack(msg);
+      }
+    });
+
+    // ─── NEW: EMAIL NOTIFICATION CONSUMER BLOCK ───
+    await channel.assertQueue('email_notifications', { durable: true });
+    
+    channel.consume('email_notifications', async (msg) => {
+      if (!msg) return;
+      try {
+        const emailData = JSON.parse(msg.content.toString());
+        console.log('Processing outgoing email delivery request for:', emailData.email);
+
+        await transporter.sendMail({
+          from: '"StreamVerse Security" <security@streamverse.com>',
+          to: emailData.email,
+          subject: emailData.subject,
+          text: emailData.body,
+        });
+
+        console.log(`Email notification successfully dispatched to ${emailData.email}`);
+        channel.ack(msg);
+      } catch (error) {
+        console.error('Failed to process or send email notification:', error.message);
+        // Acknowledge the message anyway to clear a corrupted payload, or utilize an error dead-letter setup
+        channel.ack(msg); 
+      }
+    });
+
+    console.log('RabbitMQ connected (notification-service with Email support)');
+  } catch (error) {
+    console.error('RabbitMQ connection failed:', error.message);
+    setTimeout(startRabbitMQ, 5000);
+  }
+}
 
 server.listen(PORT, () => console.log(`Notification Service running on port ${PORT}`));
 startRabbitMQ();

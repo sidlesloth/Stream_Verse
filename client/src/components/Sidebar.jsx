@@ -29,11 +29,11 @@ const Sidebar = ({ isOpen }) => {
     `}>
       <div className="p-4 space-y-2">
         <NavItem to="/" icon={Home} label="Home" />
-        <NavItem to="/trending" icon={TrendingUp} label="Trending" />
-        <NavItem to="/subscriptions" icon={PlaySquare} label="Subscriptions" />
+        {/* <NavItem to="/trending" icon={TrendingUp} label="Trending" /> */}
+        {/* <NavItem to="/subscriptions" icon={PlaySquare} label="Subscriptions" /> */}
         <hr className="my-4 border-white/5" />
-        <NavItem to="/library" icon={Clock} label="Library" />
-        <NavItem to="/liked" icon={ThumbsUp} label="Liked Videos" />
+        {/* <NavItem to="/library" icon={Clock} label="Library" /> */}
+        {/* <NavItem to="/liked" icon={ThumbsUp} label="Liked Videos" /> */}
         {isCreator && <NavItem to="/dashboard" icon={LayoutDashboard} label="Creator Dashboard" />}
       </div>
     </aside>

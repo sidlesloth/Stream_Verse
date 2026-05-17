@@ -6,7 +6,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Watch from './pages/Watch';
 import AuthPage from './pages/AuthPage';
-import './App.css';
+import Forgor from './pages/ForgotPass';
 
 function App() {
   return (
@@ -16,6 +16,7 @@ function App() {
           {/* Public Auth Routes (No Layout) */}
           <Route path="/login" element={<AuthPage type="login" />} />
           <Route path="/register" element={<AuthPage type="register" />} />
+          <Route path="/forgot-pass" element={<Forgor />} />
 
           {/* Main App Routes (With Layout) */}
           <Route path="/*" element={

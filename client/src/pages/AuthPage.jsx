@@ -169,10 +169,17 @@ const AuthPage = ({ type }) => {
 
         <p className="text-center text-gray-400 mt-8">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <Link to={isLogin ? '/register' : '/login'} className="text-brand-primary font-bold hover:underline">
+          <Link to={isLogin ? '/register' : '/login'} className="text-[#1CD6D6] font-bold hover:underline">
             {isLogin ? 'Sign Up' : 'Sign In'}
           </Link>
         </p>
+        {isLogin && (
+          <p className="text-center text-gray-400 mt-4">
+            <Link to="/forgot-pass" className="text-[#1CD6D6] font-bold hover:underline">
+              Forgot Password?
+            </Link>
+          </p>
+        )}
       </motion.div>
     </div>
   );

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const crypto = require('crypto'); // Added for generating secure temporary passwords
+const bcrypt = require('bcryptjs'); // Added for hashing the temporary password
 
 const generateTokens = (userId, name) => {
   const accessToken = jwt.sign({ userId, name }, process.env.JWT_SECRET, {
@@ -94,6 +96,57 @@ exports.updateProfile = async (req, res) => {
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ─── NEW: FORGOT PASSWORD CONTROLLER FOR MICROSERVICES ARCHITECTURE ───
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    // 1. Verify user exists in MongoDB
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'No account registered with this email address' });
+    }
+
+    // 2. Generate a secure, temporary plain-text password
+    const tempPassword = crypto.randomBytes(6).toString('hex'); // e.g., 'f3a291b8c7d6'
+
+    // 3. Hash the temporary password and save it to MongoDB
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(tempPassword, salt);
+    await user.save();
+
+    // 4. Construct the notification payload for RabbitMQ
+    const notificationPayload = {
+      email: user.email,
+      subject: 'StreamVerse - Temporary Password Reset',
+      body: `Hello ${user.name || 'User'},\n\nYou requested a password reset. Your new temporary password is:\n\n${tempPassword}\n\nPlease use this to sign in and immediately update your password inside your profile settings.`
+    };
+
+    // 5. Publish to RabbitMQ channel (checks common setup variants on req.app or global scope)
+    const channel = req.app.get('rabbitmqChannel') || global.rabbitmqChannel;
+    
+    if (channel) {
+      await channel.assertQueue('email_notifications', { durable: true });
+      channel.sendToQueue(
+        'email_notifications',
+        Buffer.from(JSON.stringify(notificationPayload)),
+        { persistent: true }
+      );
+      console.log(`Password reset event published to RabbitMQ for: ${email}`);
+    } else {
+      // Backup log so you don't lose the token if your notification broker service isn't turned on yet
+      console.warn('RabbitMQ channel uninitialized in auth-service! Temporary Password:', tempPassword);
+    }
+
+    return res.status(200).json({ message: 'A temporary password has been sent to your email.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
